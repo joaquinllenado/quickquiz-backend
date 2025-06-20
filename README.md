@@ -10,11 +10,14 @@ QuickQuiz Backend provides a RESTful API that enables users to:
 - Authenticate users securely with JWT tokens
 - Validate data with Zod schemas
 - Manage user progress and learning analytics
+- **Store and manage quiz data with Prisma ORM and PostgreSQL**
 
 ## ✨ Features
 
 - **Express.js API** - Fast, unopinionated web framework
 - **TypeScript** - Type-safe development with enhanced IDE support
+- **Prisma ORM** - Type-safe database access with auto-generated client
+- **PostgreSQL Database** - Robust relational database for data persistence
 - **Zod Validation** - Runtime type checking and data validation
 - **CORS Support** - Cross-origin resource sharing enabled
 - **Error Handling** - Centralized error handling middleware
@@ -27,11 +30,58 @@ QuickQuiz Backend provides a RESTful API that enables users to:
 - **Runtime**: Node.js
 - **Language**: TypeScript
 - **Framework**: Express.js
+- **Database**: PostgreSQL
+- **ORM**: Prisma
 - **Validation**: Zod
 - **CORS**: cors middleware
 - **Environment**: dotenv
 - **Package Manager**: pnpm
 - **Development**: ts-node-dev
+
+## 🗄️ Database Schema
+
+The application uses Prisma ORM with PostgreSQL and includes the following models:
+
+### User Model
+- `id` (UUID) - Primary key
+- `email` (String) - Unique user email
+- `createdAt` (DateTime) - Account creation timestamp
+- `quizzes` (Relation) - User's created quizzes
+
+### Quiz Model
+- `id` (UUID) - Primary key
+- `title` (String) - Quiz title
+- `source` (String) - Source content for quiz generation
+- `createdAt` (DateTime) - Creation timestamp
+- `updatedAt` (DateTime) - Last update timestamp
+- `userId` (String) - Foreign key to User
+- `questions` (Relation) - Quiz questions
+- `sessions` (Relation) - Quiz sessions
+
+### Question Model
+- `id` (UUID) - Primary key
+- `title` (String) - Question text
+- `type` (String) - Question type (multiple choice, true/false, etc.)
+- `options` (String[]) - Array of answer options
+- `answer` (String) - Correct answer
+- `quizId` (String) - Foreign key to Quiz
+- `answers` (Relation) - User answers for this question
+
+### Session Model
+- `id` (UUID) - Primary key
+- `createdAt` (DateTime) - Session start timestamp
+- `updatedAt` (DateTime) - Session end timestamp
+- `quizId` (String) - Foreign key to Quiz
+- `score` (Int) - User's score
+- `total` (Int) - Total possible score
+- `answers` (Relation) - Session answers
+
+### Answer Model
+- `id` (UUID) - Primary key
+- `sessionId` (String) - Foreign key to Session
+- `questionId` (String) - Foreign key to Question
+- `answer` (String) - User's answer
+- `isCorrect` (Boolean) - Whether answer is correct
 
 ## 🚀 Getting Started
 
@@ -39,6 +89,7 @@ QuickQuiz Backend provides a RESTful API that enables users to:
 
 - Node.js (v18 or higher)
 - pnpm (v10.11.1 or higher)
+- PostgreSQL database
 - Git
 
 ### Installation
@@ -61,7 +112,16 @@ QuickQuiz Backend provides a RESTful API that enables users to:
 
 4. **Configure your environment variables** (see Environment Configuration below)
 
-5. **Start the development server**
+5. **Set up the database**
+   ```bash
+   # Generate Prisma client
+   pnpm prisma generate
+   
+   # Run database migrations
+   pnpm prisma migrate dev
+   ```
+
+6. **Start the development server**
    ```bash
    pnpm dev
    ```
@@ -77,15 +137,15 @@ Create a `.env` file in the root directory with the following variables:
 PORT=3000
 NODE_ENV=development
 
+# Database Configuration
+DATABASE_URL="postgresql://username:password@localhost:5432/quickquiz_db"
+
 # OpenAI Configuration (for future AI features)
 OPENAI_API_KEY=your_openai_api_key_here
 
 # JWT Configuration (for future auth features)
 JWT_SECRET=your_jwt_secret_here
 JWT_EXPIRES_IN=7d
-
-# Database Configuration (for future database features)
-DATABASE_URL=your_database_url_here
 
 # CORS Configuration
 CORS_ORIGIN=http://localhost:3000
@@ -95,11 +155,52 @@ CORS_ORIGIN=http://localhost:3000
 
 - `PORT`: The port number the server runs on (default: 3000)
 - `NODE_ENV`: Environment mode (development/production)
+- `DATABASE_URL`: PostgreSQL connection string
 - `OPENAI_API_KEY`: Your OpenAI API key for AI-powered features
 - `JWT_SECRET`: Secret key for JWT token signing
 - `JWT_EXPIRES_IN`: JWT token expiration time
-- `DATABASE_URL`: Database connection string (for future implementation)
 - `CORS_ORIGIN`: Allowed origin for CORS requests
+
+## 🗄️ Database Management
+
+### Prisma Commands
+
+```bash
+# Generate Prisma client (after schema changes)
+pnpm prisma generate
+
+# Create a new migration
+pnpm prisma migrate dev --name migration_name
+
+# Apply migrations to production
+pnpm prisma migrate deploy
+
+# Reset database (development only)
+pnpm prisma migrate reset
+
+# Open Prisma Studio (database GUI)
+pnpm prisma studio
+
+# Push schema changes without migrations (development only)
+pnpm prisma db push
+```
+
+### Database Setup
+
+1. **Create PostgreSQL database**
+   ```sql
+   CREATE DATABASE quickquiz_db;
+   ```
+
+2. **Run migrations**
+   ```bash
+   pnpm prisma migrate dev
+   ```
+
+3. **Verify setup**
+   ```bash
+   pnpm prisma studio
+   ```
 
 ## 🏃‍♂️ Running in Development
 
@@ -126,6 +227,9 @@ pnpm start
 - `pnpm build` - Build the project for production
 - `pnpm start` - Start production server
 - `pnpm test` - Run tests (Jest)
+- `pnpm prisma:generate` - Generate Prisma client
+- `pnpm prisma:migrate` - Run database migrations
+- `pnpm prisma:studio` - Open Prisma Studio
 
 ## 📁 Folder Structure
 
@@ -138,6 +242,13 @@ quickquiz-backend/
 │   │   └── errorHandler.ts # Global error handling
 │   └── routes/
 │       └── health.route.ts # Health check endpoints
+├── prisma/
+│   ├── schema.prisma       # Database schema definition
+│   ├── migration_lock.toml # Migration lock file
+│   └── migrations/         # Database migration files
+│       └── 20250619215822_init/
+│           └── migration.sql
+├── generated/              # Generated Prisma client (gitignored)
 ├── package.json
 ├── tsconfig.json
 ├── .env.example
@@ -150,7 +261,9 @@ quickquiz-backend/
 - **`src/server.ts`** - Server initialization and port configuration
 - **`src/middleware/`** - Custom middleware functions
 - **`src/routes/`** - API route handlers and controllers
-- **`src/`** - Future directories for services, models, and utilities
+- **`prisma/schema.prisma`** - Database schema definition
+- **`prisma/migrations/`** - Database migration files
+- **`generated/`** - Auto-generated Prisma client (excluded from git)
 
 ## 🚀 Deployment
 
@@ -159,8 +272,8 @@ quickquiz-backend/
 1. **Connect your repository** to Render
 2. **Create a new Web Service**
 3. **Configure build settings**:
-   - Build Command: `pnpm install && pnpm build`
-   - Start Command: `pnpm start`
+   - Build Command: `pnpm install && pnpm prisma generate && pnpm build`
+   - Start Command: `pnpm prisma migrate deploy && pnpm start`
 4. **Set environment variables** in Render dashboard
 5. **Deploy**
 
@@ -178,6 +291,7 @@ Make sure to set these in your deployment platform:
 ```env
 NODE_ENV=production
 PORT=3000
+DATABASE_URL=your_production_postgresql_url
 OPENAI_API_KEY=your_production_openai_key
 JWT_SECRET=your_production_jwt_secret
 CORS_ORIGIN=https://your-frontend-domain.com
@@ -196,6 +310,9 @@ CORS_ORIGIN=https://your-frontend-domain.com
 - `PUT /quiz/:id` - Update quiz
 - `DELETE /quiz/:id` - Delete quiz
 - `GET /user/progress` - Get user learning progress
+- `POST /session/start` - Start quiz session
+- `POST /session/:id/answer` - Submit answer
+- `GET /session/:id/result` - Get session results
 
 ## 🤝 Contributing
 
@@ -204,6 +321,12 @@ CORS_ORIGIN=https://your-frontend-domain.com
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+### Development Guidelines
+
+- Run `pnpm prisma generate` after schema changes
+- Create migrations for database changes: `pnpm prisma migrate dev --name description`
+- Use Prisma Studio for database inspection: `pnpm prisma studio`
 
 ## 📝 License
 
