@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  quizzes   Quiz[]
+
+  @@map("users")
+}
+
+model Quiz {
+  id        String   @id @default(uuid())
+  title     String
+  source    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String   
+  user      User     @relation(fields: [userId], references: [id])
+  questions Question[]
+  sessions  Session[]
+
+  @@map("quizzes")
+}
+
+model Question {
+  id        String   @id @default(uuid())
+  title     String
+  type      String
+  options   String[] @default([])
+  answer    String
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id])
+  answers   Answer[]
+  @@map("questions")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id])
+  score     Int
+  total     Int
+  answers   Answer[]
+
+  @@map("sessions")
+}
+
+model Answer {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id])
+  questionId String
+  question  Question @relation(fields: [questionId], references: [id])
+  answer    String
+  isCorrect Boolean
+
+  @@map("answers")
+}
